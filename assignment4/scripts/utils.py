@@ -56,7 +56,16 @@ def projection_2d_to_3d(P, depth, pose2d):
     ############################################################################
     # TODO: YOUR CODE HERE
     ############################################################################
-
+    P_left = P[:, :3]
+    P_right = P[:, 3:4]
+    
+    P_left_inv = np.linalg.inv(P_left)
+    
+    pose3d = np.zeros((pose2d.shape[0], 3))
+    for i in range(pose2d.shape[0]):
+        u, v = pose2d[i]
+        b = np.array([u, v, 1]) * depth - P_right.flatten()
+        pose3d[i] = P_left_inv @ b
 
 
     ############################################################################
@@ -80,7 +89,14 @@ def get_world_vertices(width, height, depth):
     ############################################################################
     # TODO: YOUR CODE HERE
     ############################################################################
-
+    vertices_world[0] = [0, 0, 0]
+    vertices_world[1] = [width, 0, 0]
+    vertices_world[2] = [0, 0, depth]
+    vertices_world[3] = [width, 0, depth]
+    vertices_world[4] = [0, height, 0]
+    vertices_world[5] = [width, height, 0]
+    vertices_world[6] = [0, height, depth]
+    vertices_world[7] = [width, height, depth]
     ############################################################################
     #                             END OF YOUR CODE
     ############################################################################

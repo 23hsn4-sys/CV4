@@ -53,7 +53,7 @@ def calibrate(path='../data/cali/example/', m=4, n=7):
             # cv2.imshow('img',img)
             # cv2.waitKey(500)
 
-    cv2.destroyAllWindows()
+    #cv2.destroyAllWindows()
 
     ret, mtx, dist, _, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
 

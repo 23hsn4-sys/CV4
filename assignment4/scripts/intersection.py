@@ -27,9 +27,18 @@ def check_hand_inside_bounding_box(hand, pts):
     ############################################################################
     # TODO: YOUR CODE HERE
     ############################################################################
-
-    raise NotImplementedError('`check_hand_inside_bounding_box` function in '
-                                  + 'intersection.py needs to be implemented')
+    margin = 0.05
+    
+    x_min = np.min(pts[:, 0]) - margin
+    x_max = np.max(pts[:, 0]) + margin
+    y_min = np.min(pts[:, 1]) - margin
+    y_max = np.max(pts[:, 1]) + margin
+    z_min = np.min(pts[:, 2]) - margin
+    z_max = np.max(pts[:, 2]) + margin
+    
+    inside = (hand[0] >= x_min and hand[0] <= x_max and
+              hand[1] >= y_min and hand[1] <= y_max and
+              hand[2] >= z_min and hand[2] <= z_max)
     ############################################################################
     #                             END OF YOUR CODE
     ############################################################################

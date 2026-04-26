@@ -179,7 +179,38 @@ def detect_3d_box(img_path):
         # After this block, `hm` and `displacements` will be passed to decode().
         ############################################################################
 
-        raise NotImplementedError("TODO: implement TFLite inference for Objectron")
+        interpreter = tf.lite.Interpreter(model_path=model_path)
+        interpreter.allocate_tensors()
+        
+        input_details = interpreter.get_input_details()
+        output_details = interpreter.get_output_details()
+        
+        input_shape = input_details[0]['shape']
+        input_data = np.zeros(input_shape, dtype=np.float32)
+        
+        # image is CHW (3, 640, 480), convert to NHWC (1, 640, 480, 3)
+        image_hwc = np.transpose(image, (1, 2, 0))
+        input_data[0] = image_hwc
+        
+        interpreter.set_tensor(input_details[0]['index'], input_data)
+        interpreter.invoke()
+        
+        # Get both outputs and determine which is which based on shape
+        output0 = interpreter.get_tensor(output_details[0]['index'])
+        output1 = interpreter.get_tensor(output_details[1]['index'])
+        
+        # Heatmap has shape (1, H, W, 1), displacements has shape (1, H, W, 16)
+        if output0.shape[-1] == 1:
+            hm = output0
+            displacements = output1
+        else:
+            hm = output1
+            displacements = output0
+        
+        # hm is (1, 40, 30, 1), transpose to (1, 1, 40, 30)
+        hm = np.transpose(hm, (0, 3, 1, 2))
+        # displacements is (1, 40, 30, 16), transpose to (1, 16, 40, 30)
+        displacements = np.transpose(displacements, (0, 3, 1, 2))
 
         ############################################################################
         #                             END OF YOUR CODE

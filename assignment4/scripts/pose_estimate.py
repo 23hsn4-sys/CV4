@@ -89,7 +89,25 @@ def hand_pose_img(test_img):
     # Store the pixel-coordinate landmarks in a variable called 'landmark1'.
     ############################################################################
 
-    raise NotImplementedError("TODO: implement hand_pose_img using MediaPipe Tasks API")
+    model_path = _get_model_path()
+    
+    base_options = mp.tasks.BaseOptions(model_asset_path=model_path)
+    options = mp.tasks.vision.PoseLandmarkerOptions(
+        base_options=base_options,
+        running_mode=mp.tasks.vision.RunningMode.IMAGE
+    )
+    
+    with mp.tasks.vision.PoseLandmarker.create_from_options(options) as landmarker:
+        mp_image = mp.Image.create_from_file(test_img)
+        result = landmarker.detect(mp_image)
+        
+        if result.pose_landmarks and len(result.pose_landmarks) > 0:
+            landmarks_normalized = result.pose_landmarks[0]
+            landmark1 = np.array([[lm.x * cols, lm.y * rows] for lm in landmarks_normalized])
+        else:
+            landmark1 = np.zeros((0, 2))
+    
+    landmark = landmark1
 
     ############################################################################
     #                             END OF YOUR CODE
