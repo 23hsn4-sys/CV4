@@ -99,10 +99,35 @@ def compute_disparity_sad(left_img, right_img, window_size, max_disparity):
     ############################################################################
     # TODO: YOUR CODE HERE
     ############################################################################
+    H, W = left_img.shape
+    half_window = window_size // 2
+    disparity_map = np.zeros((H, W), dtype=np.float32)
     
-    raise NotImplementedError('`compute_disparity_sad` function in '
-                              'stereo.py needs to be implemented')
+    for y in range(half_window, H - half_window):
+        for x in range(half_window, W - half_window):
+            left_window = left_img[y - half_window:y + half_window + 1, 
+                                    x - half_window:x + half_window + 1]
+            
+            best_disparity = 0
+            best_sad = float('inf')
+            
+            for d in range(max_disparity + 1):
+                if x - d - half_window < 0:
+                    continue
+                
+                right_window = right_img[y - half_window:y + half_window + 1,
+                                            x - d - half_window:x - d + half_window + 1]
+                
+                sad = np.sum(np.abs(left_window - right_window))
+                
+                if sad < best_sad:
+                    best_sad = sad
+                    best_disparity = d
+            
+            disparity_map[y, x] = best_disparity
     
+    disparity_map[disparity_map == 0] = np.nan
+
     ############################################################################
     #                             END OF YOUR CODE
     ############################################################################
@@ -141,9 +166,47 @@ def compute_disparity_ncc(left_img, right_img, window_size, max_disparity):
     # TODO: YOUR CODE HERE
     ############################################################################
     
-    raise NotImplementedError('`compute_disparity_ncc` function in '
-                              'stereo.py needs to be implemented')
+    H, W = left_img.shape
+    half_window = window_size // 2
+    disparity_map = np.zeros((H, W), dtype=np.float32)
     
+    for y in range(half_window, H - half_window):
+        for x in range(half_window, W - half_window):
+            left_window = left_img[y - half_window:y + half_window + 1, 
+                                    x - half_window:x + half_window + 1]
+            
+            left_mean = np.mean(left_window)
+            left_std = np.std(left_window)
+            
+            best_disparity = 0
+            best_ncc = -1
+            
+            for d in range(max_disparity + 1):
+                if x - d - half_window < 0:
+                    continue
+                
+                right_window = right_img[y - half_window:y + half_window + 1,
+                                            x - d - half_window:x - d + half_window + 1]
+                
+                right_mean = np.mean(right_window)
+                right_std = np.std(right_window)
+                
+                # Avoid division by zero
+                if left_std == 0 or right_std == 0:
+                    ncc = -1
+                else:
+                    numerator = np.sum((left_window - left_mean) * (right_window - right_mean))
+                    denominator = left_std * right_std * left_window.size
+                    ncc = numerator / denominator
+                
+                if ncc > best_ncc:
+                    best_ncc = ncc
+                    best_disparity = d
+            
+            disparity_map[y, x] = best_disparity
+    
+    disparity_map[disparity_map == 0] = np.nan
+
     ############################################################################
     #                             END OF YOUR CODE
     ############################################################################
@@ -177,9 +240,14 @@ def disparity_to_depth(disparity_map, baseline, focal_length):
     # TODO: YOUR CODE HERE
     ############################################################################
     
-    raise NotImplementedError('`disparity_to_depth` function in '
-                              'stereo.py needs to be implemented')
+    depth_map = np.zeros_like(disparity_map)
     
+    # Avoid division by zero: depth = (baseline * focal_length) / disparity
+    valid = disparity_map > 0
+    depth_map[valid] = (baseline * focal_length) / disparity_map[valid]
+    
+    # Set invalid disparities to nan (no depth)
+    depth_map[~valid] = np.nan
     ############################################################################
     #                             END OF YOUR CODE
     ############################################################################
