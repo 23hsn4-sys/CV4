@@ -54,7 +54,84 @@ def process_video(path, num_frames=20, depth=1.91,
     ############################################################################
     # TODO: YOUR CODE HERE
     ############################################################################
-
+    cap = cv2.VideoCapture(path)
+    if not cap.isOpened():
+        raise FileNotFoundError(f"Cannot open video: {path}")
+    
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    frame_indices = np.linspace(0, total_frames - 1, num_frames, dtype=int)
+    
+    K = calibrate(calib_path)
+    
+    annotated_frames = []
+    vertices_world = get_world_vertices(size_x, size_y, size_z)
+    
+    for frame_idx in frame_indices:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+        ret, frame = cap.read()
+        if not ret:
+            continue
+        
+        img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame_h, frame_w = img_rgb.shape[:2]
+        
+        K_scaled = K.copy()
+        if calib_path and 'example2' in calib_path:
+            K_scaled[0, 0] *= frame_w / 640.0
+            K_scaled[1, 1] *= frame_h / 480.0
+            K_scaled[0, 2] *= frame_w / 640.0
+            K_scaled[1, 2] *= frame_h / 480.0
+        
+        try:
+            bounding_boxes_2d, _ = detect_3d_box(frame)
+        except:
+            continue
+        
+        box_points_2d = np.array(bounding_boxes_2d)
+        box_points_2d[:, 0] *= frame_w
+        box_points_2d[:, 1] *= frame_h
+        
+        M_dlt, _ = estimate_camera_matrix(box_points_2d, vertices_world)
+        
+        K_inv = np.linalg.inv(K_scaled)
+        R_approx = K_inv @ M_dlt[:, :3]
+        U_r, _, Vt_r = np.linalg.svd(R_approx)
+        R_init = U_r @ Vt_r
+        if np.linalg.det(R_init) < 0:
+            R_init = -R_init
+        rvec_init, _ = cv2.Rodrigues(R_init)
+        tvec_init = K_inv @ M_dlt[:, 3:]
+        
+        _, rvec, tvec = cv2.solvePnP(
+            vertices_world.astype('float32'),
+            box_points_2d.astype('float32'),
+            K_scaled, None,
+            rvec=rvec_init.astype('float32'),
+            tvec=tvec_init.astype('float32'),
+            useExtrinsicGuess=True
+        )
+        wRc_T, _ = cv2.Rodrigues(rvec)
+        M = K_scaled @ np.hstack([wRc_T, tvec])
+        
+        landmark_2d, _ = hand_pose_img(path.replace('.mp4', '_frame.jpg'))
+        if landmark_2d.shape[0] == 0:
+            cv2.imwrite('/tmp/temp_frame.jpg', frame)
+            landmark_2d, _ = hand_pose_img('/tmp/temp_frame.jpg')
+        
+        pose3d = projection_2d_to_3d(M, depth, landmark_2d)
+        
+        if pose3d.shape[0] > 22:
+            hand_3d = pose3d[22]
+            hand_3d = hand_3d.reshape(1, 3)
+        else:
+            hand_3d = np.zeros((1, 3))
+        
+        annotated = draw_box_intersection(img_rgb.copy(), hand_3d, vertices_world, bounding_boxes_2d)
+        annotated_frames.append(annotated)
+    
+    cap.release()
+    
+    return annotated_frames if annotated_frames else [img_rgb]
     ############################################################################
     #                             END OF YOUR CODE
     ############################################################################

@@ -41,8 +41,34 @@ def compute_disparity_ssd(left_img, right_img, window_size, max_disparity):
     # TODO: YOUR CODE HERE
     ############################################################################
     
-    raise NotImplementedError('`compute_disparity_ssd` function in '
-                              'stereo.py needs to be implemented')
+    H, W = left_img.shape
+    half_window = window_size // 2
+    disparity_map = np.zeros((H, W), dtype=np.float32)
+    
+    for y in range(half_window, H - half_window):
+        for x in range(half_window, W - half_window):
+            left_window = left_img[y - half_window:y + half_window + 1, 
+                                   x - half_window:x + half_window + 1]
+            
+            best_disparity = 0
+            best_ssd = float('inf')
+            
+            for d in range(max_disparity + 1):
+                if x - d - half_window < 0:
+                    continue
+                
+                right_window = right_img[y - half_window:y + half_window + 1,
+                                         x - d - half_window:x - d + half_window + 1]
+                
+                ssd = np.sum((left_window - right_window) ** 2)
+                
+                if ssd < best_ssd:
+                    best_ssd = ssd
+                    best_disparity = d
+            
+            disparity_map[y, x] = best_disparity
+    
+    disparity_map[disparity_map == 0] = np.nan
     
     ############################################################################
     #                             END OF YOUR CODE
