@@ -82,8 +82,10 @@ def process_video(path, num_frames=20, depth=1.91,
             K_scaled[0, 2] *= frame_w / 640.0
             K_scaled[1, 2] *= frame_h / 480.0
         
+        cv2.imwrite('/tmp/temp_frame.jpg', frame)
+        
         try:
-            bounding_boxes_2d, _ = detect_3d_box(frame)
+            bounding_boxes_2d, _ = detect_3d_box('/tmp/temp_frame.jpg')
         except:
             continue
         
@@ -113,18 +115,15 @@ def process_video(path, num_frames=20, depth=1.91,
         wRc_T, _ = cv2.Rodrigues(rvec)
         M = K_scaled @ np.hstack([wRc_T, tvec])
         
-        landmark_2d, _ = hand_pose_img(path.replace('.mp4', '_frame.jpg'))
-        if landmark_2d.shape[0] == 0:
-            cv2.imwrite('/tmp/temp_frame.jpg', frame)
-            landmark_2d, _ = hand_pose_img('/tmp/temp_frame.jpg')
+        cv2.imwrite('/tmp/temp_frame.jpg', frame)
+        landmark_2d, _ = hand_pose_img('/tmp/temp_frame.jpg')
         
         pose3d = projection_2d_to_3d(M, depth, landmark_2d)
         
         if pose3d.shape[0] > 22:
             hand_3d = pose3d[22]
-            hand_3d = hand_3d.reshape(1, 3)
         else:
-            hand_3d = np.zeros((1, 3))
+            hand_3d = np.zeros(3)
         
         annotated = draw_box_intersection(img_rgb.copy(), hand_3d, vertices_world, bounding_boxes_2d)
         annotated_frames.append(annotated)
